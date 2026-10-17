@@ -1,5 +1,5 @@
 
-# The Matcha Page 🍵
+# The Matcha Page
 
 An educational website exploring matcha, including
 its history, varieties, benefits and preparation.
