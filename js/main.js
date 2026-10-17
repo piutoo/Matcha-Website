@@ -1,0 +1,24 @@
+const $=s=>document.querySelector(s),modal=$('#modal'),mbody=$('#modalBody'),lib=$('#library'),GUIDES=['how-to-start','regions','types'];let cur=null,last=null;
+function openGuide(id,then){const s=document.getElementById(id);if(!s)return;if(cur)closeGuide(true);last=document.activeElement;cur=s;mbody.appendChild(s);$('#modalTitle').textContent=s.querySelector('h1').textContent;modal.hidden=false;modal.dataset.guide=id;document.body.classList.add('lock');mbody.scrollTop=0;$('#modalClose').focus();if(then)setTimeout(then,40)}
+function closeGuide(keep){if(!cur)return;lib.appendChild(cur);cur=null;modal.hidden=true;document.body.classList.remove('lock');if(!keep&&last&&last.focus)last.focus()}
+function reveal(el){el.scrollIntoView({behavior:'smooth',block:'center'});el.classList.add('highlight');setTimeout(()=>el.classList.remove('highlight'),1600)}
+document.addEventListener('click',e=>{const b=e.target.closest('[data-target]');if(b){e.preventDefault();openGuide(b.dataset.target);return}
+const a=e.target.closest('a[href^="#"]');if(a){const id=a.getAttribute('href').slice(1);if(GUIDES.includes(id)){e.preventDefault();openGuide(id)}else if(modal.contains(a)&&id){const t=document.getElementById(id);if(t){e.preventDefault();reveal(t)}}}
+if(e.target===modal||e.target.id==='modalClose')closeGuide()});
+document.addEventListener('keydown',e=>{if(modal.hidden)return;if(e.key==='Escape')closeGuide();if(e.key==='Tab'){const f=[...modal.querySelectorAll('a[href],button,input')].filter(x=>x.offsetParent);if(!f.length)return;const i=f.indexOf(document.activeElement);if(e.shiftKey&&i<=0){e.preventDefault();f[f.length-1].focus()}else if(!e.shiftKey&&i===f.length-1){e.preventDefault();f[0].focus()}}});
+const st=$('#searchToggle'),sp=$('#searchPanel'),si=$('#siteSearch'),res=$('#searchRes'),NAMES={'how-to-start':'How to Start','regions':'Regions','types':'Types'};let idx=null,hits=[];
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])),escRe=s=>s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+function build(){idx=[];GUIDES.forEach(id=>{const s=document.getElementById(id);let ctx='';s.querySelectorAll('h1,h2,h3,h4,p,li').forEach(el=>{const t=el.textContent.replace(/\s+/g,' ').trim();if(!t||el.classList.contains('sr'))return;if(el.tagName==='H2')ctx=t;idx.push({id,sec:NAMES[id],ctx:el.tagName==='H1'?'':ctx,el,text:t,head:/^H[1-4]$/.test(el.tagName)})})})}
+function setOpen(o){sp.classList.toggle('open',o);st.setAttribute('aria-expanded',String(o));if(o){si.focus();render()}}
+function render(){const q=si.value.trim().toLowerCase();if(!q){hits=[];res.innerHTML='<p class="sr-hint">Search all three guides, or jump straight to one. Try “umami”, “whisk” or “koicha”.</p><div class="sr-chips">'+GUIDES.map(g=>`<button type="button" data-guide="${g}">${NAMES[g]}</button>`).join('')+'</div>';return}
+if(!idx)build();const terms=q.split(/\s+/),re=new RegExp('('+terms.map(escRe).join('|')+')','ig');
+hits=idx.filter(e=>terms.every(t=>e.text.toLowerCase().includes(t)));hits=[...hits.filter(e=>e.head),...hits.filter(e=>!e.head)];const total=hits.length;hits=hits.slice(0,12);
+const hl=raw=>raw.split(re).map((p,i)=>i%2?'<mark>'+esc(p)+'</mark>':esc(p)).join('');
+const gm=GUIDES.filter(g=>NAMES[g].toLowerCase().includes(q)).map(g=>`<button type="button" class="sr-item" data-guide="${g}"><span class="sr-top"><span class="sr-tag">${NAMES[g]}</span><span class="sr-ctx">Open the ${NAMES[g]} guide</span></span></button>`).join('');
+if(!hits.length&&!gm){res.innerHTML='<p class="sr-hint">No matches for “'+esc(si.value.trim())+'”. Try a shorter word, or open a guide:</p><div class="sr-chips">'+GUIDES.map(g=>`<button type="button" data-guide="${g}">${NAMES[g]}</button>`).join('')+'</div>';return}
+res.innerHTML=(hits.length?`<p class="sr-count">${total} match${total>1?'es':''}${total>12?' (showing 12)':''}</p>`:'')+gm+hits.map((e,i)=>{const lo=e.text.toLowerCase(),at=Math.max(0,lo.indexOf(terms[0])-45),sn=(at>0?'…':'')+e.text.slice(at,at+130)+(at+130<e.text.length?'…':'');return`<button type="button" class="sr-item" data-i="${i}"><span class="sr-top"><span class="sr-tag">${e.sec}</span><span class="sr-ctx">${esc(e.ctx||e.sec)}</span></span><span class="sr-txt">${hl(sn)}</span></button>`}).join('')}
+res.addEventListener('click',e=>{const b=e.target.closest('[data-guide],[data-i]');if(!b)return;setOpen(false);if(b.dataset.guide)openGuide(b.dataset.guide);else{const h=hits[+b.dataset.i];openGuide(h.id,()=>reveal(h.el))}});
+st.addEventListener('click',()=>setOpen(!sp.classList.contains('open')));si.addEventListener('input',render);
+function first(){const b=res.querySelector('.sr-item');if(b)b.click()}
+$('#searchGo').addEventListener('click',first);si.addEventListener('keydown',e=>{if(e.key==='Enter')first()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modal.hidden&&sp.classList.contains('open'))setOpen(false)});
